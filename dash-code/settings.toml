@@ -1,0 +1,5 @@
+CIRCUITPY_WIFI_SSID = "Your_WiFi_Name"
+CIRCUITPY_WIFI_PASSWORD = "Your_WiFi_Password"
+
+AIO_USERNAME = "your_username_here"
+AIO_KEY = "aio_xxxxxxxxxxxxxxxxx"
