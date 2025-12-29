@@ -119,5 +119,5 @@ WET_VAL = 1015  # Value when sensor is in a cup of water
 Adjust these numbers based on your specific soil type for accurate percentages.
 
 ## 📚 Resources
-* **Font:** [Tom Thumb BDF](https://raw.githubusercontent.com/adafruit/Adafruit_CircuitPython_Bitmap_Font/main/examples/fonts/tom-thumb.bdf) (Right Click -> Save As)
+* **Font:** [Tom Thumb BDF](https://github.com/apparentlymart/led-matrix-fonts/blob/master/tom-thumb.bdf) (Right Click -> Save As)
 * **Library Bundle:** [Adafruit CircuitPython Bundle](https://circuitpython.org/libraries)
