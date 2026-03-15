@@ -9,11 +9,9 @@ from adafruit_io.adafruit_io import IO_HTTP, AdafruitIO_RequestError
 from adafruit_seesaw.seesaw import Seesaw
 
 # 1. Hardware Initialization
-print("Restoring Always-On Loop...")
-print("Initializing I2C Bus...")
+print("Initializing Firmware (Dynamic Calibration)...")
 i2c_bus = board.STEMMA_I2C()
 soil_sensor = Seesaw(i2c_bus, addr=0x36)
-print("Soil Sensor detected.")
 
 # 2. Network Authentication
 print(f"Connecting to SSID: {os.getenv('CIRCUITPY_WIFI_SSID')}")
@@ -34,41 +32,42 @@ feed_temp_name = f"{base_feed_name}-temperature"
 try:
     moisture_feed = io_client.get_feed(feed_moisture_name)
     temp_feed = io_client.get_feed(feed_temp_name)
-    print(f"Feeds located: {feed_moisture_name}, {feed_temp_name}")
 except AdafruitIO_RequestError:
-    print("Feeds not found. Generating new feeds on Adafruit IO...")
     moisture_feed = io_client.create_new_feed(feed_moisture_name)
     temp_feed = io_client.create_new_feed(feed_temp_name)
 
 # 5. Calibration Helper
 def map_range(x, in_min, in_max, out_min, out_max):
-    # Maps a value from one range to another
     return max(min((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min, out_max), out_min)
 
 # 6. Telemetry Loop
 while True:
     try:
         # Check for calibration updates in settings.toml
-        dry_val = int(os.getenv("DRY_VAL", 300))
-        wet_val = int(os.getenv("WET_VAL", 1015))
+        dry_val = os.getenv("DRY_VAL")
+        wet_val = os.getenv("WET_VAL")
+        
+        # Fallback and type correction
+        dry = int(dry_val) if dry_val is not None else 300
+        wet = int(wet_val) if wet_val is not None else 1015
 
         # Read raw data from the Seesaw chip
         moisture_val = soil_sensor.moisture_read()
         temperature_c = soil_sensor.get_temp()
         temperature_f = temperature_c * 9 / 5 + 32
         
-        # Calculate Percentage
-        moisture_percent = int(map_range(moisture_val, dry_val, wet_val, 0, 100))
+        # Calculate Percentage using current dry/wet values
+        moisture_percent = int(map_range(moisture_val, dry, wet, 0, 100))
         
-        print(f"Update -> Raw: {moisture_val} (Min:{dry_val} Max:{wet_val}) | Moisture: {moisture_percent}%")
+        print(f"DEBUG: Read DRY_VAL='{dry_val}' -> using {dry}")
+        print(f"Telemetry -> Raw: {moisture_val} | Moisture: {moisture_percent}%")
 
-        # Transmit payloads to Adafruit IO
+        # Transmit
         io_client.send_data(moisture_feed["key"], moisture_percent)
         io_client.send_data(temp_feed["key"], f"{temperature_f:.2f}")
-        print("Transmission successful.")
+        print("Sent successfully.")
 
     except Exception as e:
-        print(f"Hardware or Network Error: {e}")
+        print(f"Error: {e}")
 
-    # Delay to comply with Adafruit IO free-tier rate limits (30 requests/minute max)
     time.sleep(60) 
