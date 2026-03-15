@@ -40,10 +40,7 @@ except AdafruitIO_RequestError:
     moisture_feed = io_client.create_new_feed(feed_moisture_name)
     temp_feed = io_client.create_new_feed(feed_temp_name)
 
-# 5. Calibration Helpers
-dry_val = int(os.getenv("DRY_VAL", 300))
-wet_val = int(os.getenv("WET_VAL", 1015))
-
+# 5. Calibration Helper
 def map_range(x, in_min, in_max, out_min, out_max):
     # Maps a value from one range to another
     return max(min((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min, out_max), out_min)
@@ -51,6 +48,10 @@ def map_range(x, in_min, in_max, out_min, out_max):
 # 6. Telemetry Loop
 while True:
     try:
+        # Check for calibration updates in settings.toml
+        dry_val = int(os.getenv("DRY_VAL", 300))
+        wet_val = int(os.getenv("WET_VAL", 1015))
+
         # Read raw data from the Seesaw chip
         moisture_val = soil_sensor.moisture_read()
         temperature_c = soil_sensor.get_temp()
@@ -59,7 +60,7 @@ while True:
         # Calculate Percentage
         moisture_percent = int(map_range(moisture_val, dry_val, wet_val, 0, 100))
         
-        print(f"Raw: {moisture_val} | Moisture: {moisture_percent}% | Temp: {temperature_f:.2f}F")
+        print(f"Update -> Raw: {moisture_val} (Min:{dry_val} Max:{wet_val}) | Moisture: {moisture_percent}%")
 
         # Transmit payloads to Adafruit IO
         io_client.send_data(moisture_feed["key"], moisture_percent)
