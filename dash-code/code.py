@@ -186,7 +186,7 @@ SPRITE_DATA = [
         "0000100000000000"
         "0000001000000000"
         "0000000100000000"
-        "0004444414444000" 
+        "0004444444444000" 
         "0044444444444400" 
         "0044444444444400" 
         "0004444444444000" 
@@ -419,15 +419,21 @@ class PlantMonitor:
         plant_feeds = list(PLANT_CONFIG.keys())
         
         # Calculate Layout
-        sprite_w = PlantUI.SPRITE_W
-        gap = 3
-        total_w = (num_plants * sprite_w) + ((num_plants - 1) * gap)
+        sprite_w: int = PlantUI.SPRITE_W
+        gap: int = 3
+        total_w: int = (num_plants * sprite_w) + ((num_plants - 1) * gap)
         
         if total_w > 64:
             gap = (64 - (num_plants * sprite_w)) // (num_plants - 1) if num_plants > 1 else 0
             total_w = (num_plants * sprite_w) + ((num_plants - 1) * gap)
         
-        margin_left = (64 - total_w) // 2
+        margin_left: int = (64 - total_w) // 2
+        
+        # Pre-calculate positions to bypass analyzer type inference issues
+        positions = []
+        for j in range(num_plants):
+            pos: int = margin_left + (j * (sprite_w + gap))
+            positions.append(pos)
 
         for i, feed in enumerate(plant_feeds):
             config = PLANT_CONFIG[feed]
@@ -439,7 +445,7 @@ class PlantMonitor:
                 variant = None
                 
             p_ui = PlantUI(name, feed, self.font, self.sprite_sheet, self.palette, variant=variant)
-            p_ui.set_position(margin_left + (i * (sprite_w + gap)))
+            p_ui.set_position(positions[i])
             
             self.plants.append(p_ui)
             self.group.append(p_ui.group)
