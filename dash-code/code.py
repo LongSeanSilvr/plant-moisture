@@ -8,209 +8,189 @@ from adafruit_matrixportal.matrixportal import MatrixPortal
 from adafruit_display_text import label
 from adafruit_bitmap_font import bitmap_font
 
-# --- CONFIGURATION ---
+# --- CONSTANTS & CONFIG ---
 PLANT_CONFIG = {
     "plant-1": "FIG",
     "plant-2": "IVY",
     "plant-3": "PAL",
-    # "plant-4": "JADE", 
 }
 REFRESH_RATE = 600
-DEBUG_MODE = True # Set to True to cycle mock data for testing UI
+DEBUG_MODE = True
 
-# --- COLOR PALETTE ---
-COLOR_BLACK   = 0x000000 # 0
-COLOR_GREEN   = 0x00FF00 # 1
-COLOR_YELLOW  = 0xFFFF00 # 2
-COLOR_RED     = 0xFF0000 # 3
-COLOR_BROWN   = 0x884400 # 4
-COLOR_POT     = COLOR_BROWN
-COLOR_TEXT    = 0xFFFFFF
-COLOR_PCT     = 0xAAAAAA
+# Color Palette (HSL-adjacent visuals)
+COLORS = {
+    "BLACK":  0x000000,
+    "GREEN":  0x00FF00,
+    "YELLOW": 0xFFFF00,
+    "RED":    0xFF0000,
+    "BROWN":  0x884400,
+    "TEXT":   0xFFFFFF,
+    "PCT":    0xAAAAAA,
+}
 
-# --- PIXEL ART DATA (16x20) ---
-# 0: Black, 1: Green, 2: Yellow, 3: Red, 4: Brown
+# Sprite Data Strings
 SPRITE_DATA = [
-    # HEALTHY (State 0) - Green Leaf in Brown Pot
+    # HEALTHY (State 0)
     (
-        "0000000000000000"
-        "0000000000000000"
-        "0000000001000000"
-        "0000000111000000"
-        "0000001111100000"
-        "0000111001110000"
-        "0001111001111000"
-        "0011101001011100"
-        "0111101001011110"
-        "0111111001111110"
-        "0111011001101110"
-        "0011111111111100"
-        "0001101001011000"
-        "0000111111110000"
-        "0004444444444000" 
-        "0044444444444400" 
-        "0044444444444400" 
-        "0004444444444000" 
-        "0000000000000000"
-        "0000000000000000"
+        "0000000000000000" "0000000000000000" "0000000001000000" "0000000111000000"
+        "0000001111100000" "0000111001110000" "0001111001111000" "0011101001011100"
+        "0111101001011110" "0111111001111110" "0111011001101110" "0011111111111100"
+        "0001101001011000" "0000111111110000" "0004444444444000" "0044444444444400"
+        "0044444444444400" "0004444444444000" "0000000000000000" "0000000000000000"
     ),
-    # THIRSTY (State 1) - Wilted Seedling in Brown Pot
+    # THIRSTY (State 1)
     (
-        "0000000000000000"
-        "0000000000000000"
-        "0000000000000000"
-        "0000000222200000"
-        "0000002200220000"
-        "0000022000022000"
-        "0000220000022200"
-        "0000220000222220"
-        "0000220000222220"
-        "0000022000022200"
-        "0000002200002000"
-        "0000000220000000"
-        "0000000220000000"
-        "0000000220000000"
-        "0004444444444000" 
-        "0044444444444400" 
-        "0044444444444400" 
-        "0004444444444000" 
-        "0000000000000000"
-        "0000000000000000"
+        "0000000000000000" "0000000000000000" "0000000000000000" "0000000222200000"
+        "0000002200220000" "0000022000022000" "0000220000022200" "0000220000222220"
+        "0000220000222220" "0000022000022200" "0000002200002000" "0000000220000000"
+        "0000000220000000" "0000000220000000" "0004444444444000" "0044444444444400"
+        "0044444444444400" "0004444444444000" "0000000000000000" "0000000000000000"
     ),
-    # CRITICAL (State 2) - Red Branch in Brown Pot
+    # CRITICAL (State 2)
     (
-        "0000000000000000"
-        "0000000000000000"
-        "0000000000000000"
-        "0000000000003000"
-        "0000000000033000"
-        "0000000000330000"
-        "0003000000330000"
-        "0003300003300000"
-        "0000330033000000"
-        "0000033330000300"
-        "0000003300003300"
-        "0000003300033000"
-        "0000003300330000"
-        "0000003333000000"
-        "0004444444444000" 
-        "0044444444444400" 
-        "0044444444444400" 
-        "0004444444444000" 
-        "0000000000000000"
-        "0000000000000000"
+        "0000000000000000" "0000000000000000" "0000000000000000" "0000000000003000"
+        "0000000000033000" "0000000000330000" "0003000000330000" "0003300003300000"
+        "0000330033000000" "0000033330000300" "0000003300003300" "0000003300033000"
+        "0000003300330000" "0000003333000000" "0004444444444000" "0044444444444400"
+        "0044444444444400" "0004444444444000" "0000000000000000" "0000000000000000"
     )
 ]
 
-def create_sprite_sheet():
-    sheet = displayio.Bitmap(16 * 3, 20, 5)
-    for s in range(3):
-        data = SPRITE_DATA[s]
-        for y in range(20):
-            for x in range(16):
-                val = int(data[y * 16 + x])
-                sheet[s * 16 + x, y] = val
-    return sheet
+class PlantUI:
+    """Manages the visual representation of a single plant."""
+    SPRITE_W = 16
+    SPRITE_H = 20
 
-# --- SETUP MATRIX ---
-gc.collect()
-try:
-    matrixportal = MatrixPortal(bit_depth=2, debug=False)
-except Exception:
-    print("Hardware Error")
-    raise
+    def __init__(self, name, feed_id, font, sprite_sheet, palette):
+        self.name = name
+        self.feed_id = feed_id
+        self.group = displayio.Group()
+        
+        # 1. Sprite TileGrid
+        self.tile_grid = displayio.TileGrid(
+            sprite_sheet, pixel_shader=palette,
+            width=1, height=1,
+            tile_width=self.SPRITE_W, tile_height=self.SPRITE_H
+        )
+        self.tile_grid.y = 6
+        self.group.append(self.tile_grid)
 
-group = displayio.Group()
-matrixportal.display.root_group = group
+        # 2. Percentage Label
+        self.pct_label = label.Label(font, text="--%", color=COLORS["PCT"])
+        self.pct_label.anchor_point = (0.5, 0.0)
+        self.pct_label.anchored_position = (self.SPRITE_W // 2, 0)
+        self.group.append(self.pct_label)
 
-# --- LOAD FONTS ---
-try:
-    small_font = bitmap_font.load_font("/fonts/tom-thumb.bdf")
-except:
-    small_font = terminalio.FONT
+        # 3. Name Label
+        self.name_label = label.Label(font, text=name, color=COLORS["TEXT"])
+        self.name_label.anchor_point = (0.5, 1.0)
+        self.name_label.anchored_position = (self.SPRITE_W // 2, 32)
+        self.group.append(self.name_label)
 
-# --- UI STATE ---
-num_plants = len(PLANT_CONFIG)
-plant_feeds = list(PLANT_CONFIG.keys())
-sprite_sheet = create_sprite_sheet()
-palette = displayio.Palette(5)
-palette[0] = COLOR_BLACK
-palette[1] = COLOR_GREEN
-palette[2] = COLOR_YELLOW
-palette[3] = COLOR_RED
-palette[4] = COLOR_BROWN
+    def set_position(self, x):
+        self.group.x = x
 
-tile_grids = []
-name_labels = []
-pct_labels = []
-
-# --- HORIZONTAL LAYOUT ENGINE ---
-sprite_w = 16
-gap = 3 
-total_width_needed = (num_plants * sprite_w) + ((num_plants - 1) * gap)
-
-if total_width_needed > 64:
-    gap = (64 - (num_plants * sprite_w)) // (num_plants - 1) if num_plants > 1 else 0
-    total_width_needed = (num_plants * sprite_w) + ((num_plants - 1) * gap)
-
-margin_left = (64 - total_width_needed) // 2
-
-for i in range(num_plants):
-    x_start = margin_left + (i * (sprite_w + gap))
-    x_center = x_start + 8
-    
-    # 1. Sprite
-    tg = displayio.TileGrid(sprite_sheet, pixel_shader=palette,
-                            width=1, height=1,
-                            tile_width=16, tile_height=20)
-    tg.x = x_start
-    tg.y = 6 
-    tile_grids.append(tg)
-    group.append(tg)
-    
-    # 2. % Label
-    text_pct = label.Label(small_font, text="--%", color=COLOR_PCT)
-    text_pct.anchor_point = (0.5, 0.0)
-    text_pct.anchored_position = (x_center, 0)
-    pct_labels.append(text_pct)
-    group.append(text_pct)
-    
-    # 3. Name Label
-    name = PLANT_CONFIG[plant_feeds[i]]
-    text_name = label.Label(small_font, text=name, color=COLOR_TEXT)
-    text_name.anchor_point = (0.5, 1.0)
-    text_name.anchored_position = (x_center, 32)
-    name_labels.append(text_name)
-    group.append(text_name)
-
-def update_display():
-    for i, feed in enumerate(plant_feeds):
-        try:
-            if DEBUG_MODE:
-                test_vals = [100, 40, 10, 80]
-                value = test_vals[i % 4]
-            else:
-                data = matrixportal.get_io_data(feed)
-                value = int(float(data[0]['value'])) if data else 0
-            
-            print(f"{PLANT_CONFIG[feed]}: {value}%")
-            
-            # Update % Text
-            pct_labels[i].text = f"{value}%"
-            
-            # Determine State
+    def update(self, value):
+        """Update text and sprite based on moisture value."""
+        self.pct_label.text = f"{value}%"
+        
+        # Determine State
+        if value < 20:
+            state = 2 # Critical
+        elif value < 50:
+            state = 1 # Thirsty
+        else:
             state = 0 # Healthy
-            if value < 20:
-                state = 2 # Critical
-            elif value < 50:
-                state = 1 # Thirsty
-            
-            # Update Sprite
-            tile_grids[i][0] = state
-            
-        except Exception as e:
-            print(f"Error updating {feed}: {e}")
+        
+        self.tile_grid[0] = state
 
-while True:
-    update_display()
-    time.sleep(REFRESH_RATE)
+class PlantMonitor:
+    """Main application orchestrator."""
+    def __init__(self):
+        gc.collect()
+        self.matrixportal = MatrixPortal(bit_depth=2, debug=False)
+        self.group = displayio.Group()
+        self.matrixportal.display.root_group = self.group
+
+        self.font = self._load_font()
+        self.palette = self._create_palette()
+        self.sprite_sheet = self._create_sprite_sheet()
+        
+        self.plants = []
+        self._setup_ui()
+
+    def _load_font(self):
+        try:
+            return bitmap_font.load_font("/fonts/tom-thumb.bdf")
+        except:
+            return terminalio.FONT
+
+    def _create_palette(self):
+        palette = displayio.Palette(5)
+        palette[0] = COLORS["BLACK"]
+        palette[1] = COLORS["GREEN"]
+        palette[2] = COLORS["YELLOW"]
+        palette[3] = COLORS["RED"]
+        palette[4] = COLORS["BROWN"]
+        return palette
+
+    def _create_sprite_sheet(self):
+        sheet = displayio.Bitmap(16 * 3, 20, 5)
+        for s, data in enumerate(SPRITE_DATA):
+            for y in range(20):
+                for x in range(16):
+                    val = int(data[y * 16 + x])
+                    sheet[s * 16 + x, y] = val
+        return sheet
+
+    def _setup_ui(self):
+        num_plants = len(PLANT_CONFIG)
+        plant_feeds = list(PLANT_CONFIG.keys())
+        
+        # Calculate Layout
+        sprite_w = PlantUI.SPRITE_W
+        gap = 3
+        total_w = (num_plants * sprite_w) + ((num_plants - 1) * gap)
+        
+        if total_w > 64:
+            gap = (64 - (num_plants * sprite_w)) // (num_plants - 1) if num_plants > 1 else 0
+            total_w = (num_plants * sprite_w) + ((num_plants - 1) * gap)
+        
+        margin_left = (64 - total_w) // 2
+
+        for i, feed in enumerate(plant_feeds):
+            name = PLANT_CONFIG[feed]
+            p_ui = PlantUI(name, feed, self.font, self.sprite_sheet, self.palette)
+            p_ui.set_position(margin_left + (i * (sprite_w + gap)))
+            
+            self.plants.append(p_ui)
+            self.group.append(p_ui.group)
+
+    def fetch_data(self):
+        """Fetch moisture levels and update UI."""
+        for i, plant in enumerate(self.plants):
+            try:
+                if DEBUG_MODE:
+                    test_vals = [85, 42, 12, 60]
+                    value = test_vals[i % 4]
+                else:
+                    data = self.matrixportal.get_io_data(plant.feed_id)
+                    value = int(float(data[0]['value'])) if data else 0
+                
+                print(f"Updating {plant.name}: {value}%")
+                plant.update(value)
+                
+            except Exception as e:
+                print(f"Error fetching {plant.feed_id}: {e}")
+
+    def run(self):
+        """Main loop."""
+        while True:
+            self.fetch_data()
+            gc.collect() # Regular cleanup
+            time.sleep(REFRESH_RATE)
+
+# --- START APP ---
+if __name__ == "__main__":
+    app = PlantMonitor()
+    app.run()
