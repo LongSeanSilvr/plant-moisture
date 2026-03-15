@@ -12,7 +12,7 @@ A distributed plant monitoring system using Adafruit hardware and CircuitPython.
 * 1x **Cable:** [STEMMA QT Cable (100mm or 50mm)](https://www.adafruit.com/product/4210)
 
 ### Part B: The Dashboard Hub
-* 1x **Controller:** [Adafruit Matrix Portal S3](https://www.adafruit.com/product/5778)
+* 1x **Controller:** [Adafruit Matrix Portal M4](https://www.adafruit.com/product/4745)
 * 1x **Display:** 64x32 RGB LED Matrix (P3 or P4 pitch)
 * 1x **Power:** USB-C Power Supply (5V, 2A+ recommended)
 
@@ -28,7 +28,7 @@ A distributed plant monitoring system using Adafruit hardware and CircuitPython.
 4.  **Mounting:** Velcro or tape the battery/board "sandwich" to the back of your plant pot, and insert the sensor into the soil (up to the line).
 
 ### Dashboard Hub
-1.  **Mounting:** Plug the **Matrix Portal S3** directly into the input header on the back of the **64x32 LED Matrix**.
+1.  **Mounting:** Plug the **Matrix Portal M4** directly into the input header on the back of the **64x32 LED Matrix**.
 2.  **Power:** Connect the USB-C cable to the Matrix Portal.
 3.  **Important:** Ensure the screw terminals on the Matrix Portal are tightened if you are using the separate power fork connectors.
 
@@ -72,9 +72,10 @@ AIO_FEED_NAME = "plant-1"     # CHANGE THIS per board (plant-2, plant-3, etc)
 SLEEP_SECONDS = 3600          # 1 Hour
 ```
 
-### 2. The Dashboard Hub (Matrix Portal S3)
+### 2. The Dashboard Hub (Matrix Portal M4)
 * **CircuitPython Version:** **10.x** (Required for latest MatrixPortal graphics optimizations).
 * **Display:** 64x32 Grid with custom "Tom Thumb" font for compact text.
+* **Architecture:** Uses `PlantUI` for component-based rendering and `PlantMonitor` for application logic.
 
 **File Structure:**
 ```text
@@ -82,14 +83,14 @@ CIRCUITPY/
 ├── fonts/
 │   └── tom-thumb.bdf          # REQUIRED: Tiny pixel font
 ├── lib/
-│   ├── adafruit_bitmap_font/  # Folder
-│   ├── adafruit_bus_device/   # Folder
-│   ├── adafruit_display_shapes/ # Folder
-│   ├── adafruit_display_text/ # Folder
-│   ├── adafruit_esp32spi/     # Folder
-│   ├── adafruit_io/           # Folder
-│   ├── adafruit_matrixportal/ # Folder
-│   ├── adafruit_portalbase/   # Folder
+│   ├── adafruit_bitmap_font/
+│   ├── adafruit_bus_device/
+│   ├── adafruit_display_shapes/
+│   ├── adafruit_display_text/
+│   ├── adafruit_esp32spi/     # For M4 Wifi
+│   ├── adafruit_io/
+│   ├── adafruit_matrixportal/
+│   ├── adafruit_portalbase/
 │   ├── adafruit_requests.mpy
 │   └── neopixel.mpy
 ├── code.py                    # The dashboard logic
@@ -100,9 +101,37 @@ CIRCUITPY/
 ```toml
 CIRCUITPY_WIFI_SSID = "Your_WiFi_Name"
 CIRCUITPY_WIFI_PASSWORD = "Your_WiFi_Password"
-AIO_USERNAME = "your_username"
-AIO_KEY = "your_active_key"
+# MatrixPortal M4 handles AIO keys via settings.toml
+aio_username = "your_username"
+aio_key = "your_active_key"
 ```
+
+**Application Modes (`DISPLAY_MODE`):**
+*   `NORMAL`: Fetches data from Adafruit IO.
+*   `SPRITE_DEMO`: Cycles through all available plant variants.
+*   `FEED_DEBUG`: Tests UI states (Healthy, Thirsty, Critical) with local mock data.
+
+---
+
+## 🎨 Sprite System
+
+The hub uses a custom sprite system designed for the 64x32 matrix.
+
+*   **Format:** 16x20 pixel sprites.
+*   **Palette:** 5-color HSL-adjacent palette (Black, Green, Yellow, Red, Brown).
+*   **Optimization:** Configured with `bit_depth=2` for memory efficiency on the M4.
+*   **Variants:** Includes 10 unique healthy plant variants (Broadleaf, Cactus, Fern, Bonsai, Bamboo, Succulent, Vine, Palm, Snake Plant, Monstera) plus 2 universal health states (Thirsty, Critical).
+
+**Plant Configuration (`code.py`):**
+```python
+PLANT_CONFIG = {
+    "plant-1": {"name": "FIG", "variant": 1},
+    "plant-2": {"name": "IVY", "variant": 2},
+    "plant-3": {"name": "PAL", "variant": 8},
+    "plant-4": {"name": "SNA", "variant": 9},
+}
+```
+*Assign a variant (1-10) to each feed ID to customize your dashboard.*
 
 ---
 
