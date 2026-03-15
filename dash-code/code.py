@@ -23,7 +23,7 @@ REFRESH_RATE = 600
 # --- COLOR PALETTE ---
 COLOR_RED    = 0x880000 
 COLOR_YELLOW = 0x888800
-COLOR_GREEN  = 0x004400
+COLOR_GREEN  = 0x008800
 COLOR_BLACK  = 0x000000
 COLOR_TEXT   = 0xFFFFFF
 COLOR_PCT    = 0x888888 
@@ -35,15 +35,25 @@ TEXT_BUFFER      = 1   # Gap between Name and Bar
 PCT_AREA_HEIGHT  = 6   # Height for the Tiny Font
 
 # --- LOAD FONTS ---
-# Attempt to load the tiny font. Fallback to terminalio if missing.
+print("Loading fonts...")
 try:
     small_font = bitmap_font.load_font("/fonts/tom-thumb.bdf")
+    print("Font loaded successfully.")
 except Exception as e:
-    print("WARNING: Custom font not found. Using terminalio.")
+    print(f"WARNING: Custom font not found ({e}). Using terminalio.")
     small_font = terminalio.FONT
 
 # --- SETUP MATRIX ---
-matrixportal = MatrixPortal(status_neopixel=board.NEOPIXEL, debug=False)
+import gc
+gc.collect()
+
+try:
+    # bit_depth=1 is required for the MatrixPortal M4 to avoid memory hangs
+    matrixportal = MatrixPortal(bit_depth=1, debug=False)
+except Exception as e:
+    print(f"Hardware Error: {e}")
+    raise e
+
 group = displayio.Group()
 matrixportal.display.root_group = group
 
@@ -119,8 +129,6 @@ def get_color(moisture_val):
     return COLOR_GREEN
 
 def update_display():
-    print("Updating Dashboard...")
-    
     for i, feed in enumerate(plant_feeds):
         try:
             data = matrixportal.get_io_data(feed)
