@@ -12,12 +12,15 @@ from adafruit_bitmap_font import bitmap_font
 # --- CONSTANTS & CONFIG ---
 PLANT_CONFIG = {
     "plant-1": {"name": "FIG", "variant": 1},
-    "plant-2": "IVY",
-    "plant-3": "PAL",
+    "plant-2": {"name": "IVY", "variant": 2},
+    "plant-3": {"name": "PAL", "variant": 8},
+    "plant-4": {"name": "SNA", "variant": 9},
 }
 REFRESH_RATE = 600
-DEBUG_MODE = True
-CYCLE_DEMO = True  # Cycle through all 10 sprites every 15s if DEBUG_MODE is True
+ROTATION_INTERVAL = 15  # Seconds between plant rotations
+
+# Display Modes: "NORMAL", "SPRITE_DEMO", "FEED_DEBUG"
+DISPLAY_MODE = "FEED_DEBUG" 
 
 # Color Palette (HSL-adjacent visuals)
 COLORS = {
@@ -384,9 +387,22 @@ class PlantMonitor:
         self.palette = self._create_palette()
         self.sprite_sheet = self._create_sprite_sheet()
         
-        self.debug_counter = 0
         self.plants = []
-        self._setup_ui()
+        self._window_start = 0
+        self._max_visible = 3
+        
+        # Initialize all plants
+        for feed, config in PLANT_CONFIG.items():
+            if isinstance(config, dict):
+                name = config["name"]
+                variant = config.get("variant")
+            else:
+                name = config
+                variant = None
+            p_ui = PlantUI(name, feed, self.font, self.sprite_sheet, self.palette, variant=variant)
+            self.plants.append(p_ui)
+            
+        self._update_display()
 
     def _load_font(self):
         try:
@@ -414,79 +430,92 @@ class PlantMonitor:
                     sheet[s * 16 + x, y] = val
         return sheet
 
-    def _setup_ui(self):
-        num_plants = len(PLANT_CONFIG)
-        plant_feeds = list(PLANT_CONFIG.keys())
+    def _update_display(self):
+        """Update which plants are visible and their positions."""
+        # Clear current group
+        while len(self.group) > 0:
+            self.group.pop()
+            
+        num_plants = len(self.plants)
+        visible_count = min(num_plants, self._max_visible)
         
-        # Calculate Layout
+        # Calculate Layout for visible window
         sprite_w: int = PlantUI.SPRITE_W
         gap: int = 3
-        total_w: int = (num_plants * sprite_w) + ((num_plants - 1) * gap)
+        total_w: int = (visible_count * sprite_w) + ((visible_count - 1) * gap)
         
         if total_w > 64:
-            gap = (64 - (num_plants * sprite_w)) // (num_plants - 1) if num_plants > 1 else 0
-            total_w = (num_plants * sprite_w) + ((num_plants - 1) * gap)
+            gap = (64 - (visible_count * sprite_w)) // (visible_count - 1) if visible_count > 1 else 0
+            total_w = (visible_count * sprite_w) + ((visible_count - 1) * gap)
         
         margin_left: int = (64 - total_w) // 2
-        
-        # Pre-calculate positions to bypass analyzer type inference issues
-        positions = []
-        for j in range(num_plants):
-            pos: int = margin_left + (j * (sprite_w + gap))
-            positions.append(pos)
 
-        for i, feed in enumerate(plant_feeds):
-            config = PLANT_CONFIG[feed]
-            if isinstance(config, dict):
-                name = config["name"]
-                variant = config.get("variant")
-            else:
-                name = config
-                variant = None
-                
-            p_ui = PlantUI(name, feed, self.font, self.sprite_sheet, self.palette, variant=variant)
-            p_ui.set_position(positions[i])
+        for i in range(visible_count):
+            idx = (self._window_start + i) % num_plants
+            plant = self.plants[idx]
             
-            self.plants.append(p_ui)
-            self.group.append(p_ui.group)
+            x_pos = margin_left + (i * (sprite_w + gap))
+            plant.set_position(x_pos)
+            self.group.append(plant.group)
+
+    def rotate_window(self):
+        """Shift the sliding window by one plant."""
+        self._window_start = (self._window_start + 1) % len(self.plants)
+        self._update_display()
 
     def fetch_data(self):
         """Fetch moisture levels and update UI."""
         for i, plant in enumerate(self.plants):
             try:
-                if DEBUG_MODE and CYCLE_DEMO:
-                    # Cycle through ALL sprites in SPRITE_DATA
+                if DISPLAY_MODE == "SPRITE_DEMO":
+                    # Cycle through ALL 12 sprites (10 variants + 2 states)
                     num_all = len(SPRITE_DATA)
-                    sprite_idx = (self.debug_counter + i) % num_all
+                    # We use i to offset so each visible plant shows a different sprite
+                    sprite_idx = (self._window_start + i) % num_all 
                     plant.pct_label.text = f"S{sprite_idx}"
                     plant.tile_grid[0] = sprite_idx
                     print(f"Demo: {plant.name} -> Sprite {sprite_idx}")
-                elif DEBUG_MODE:
-                    test_vals = [85, 42, 12, 60]
-                    value = test_vals[i % 4]
-                    print(f"Updating {plant.name}: {value}%")
+                    
+                elif DISPLAY_MODE == "FEED_DEBUG":
+                    # Forced states: Healthy, Thirsty, Critical, Healthy
+                    test_vals = [85, 42, 12, 65]
+                    value = test_vals[i % len(test_vals)]
+                    print(f"Debug: {plant.name} -> {value}%")
                     plant.update(value)
-                else:
+                    
+                else: # NORMAL mode
                     data = self.matrixportal.get_io_data(plant.feed_id)
                     value = int(float(data[0]['value'])) if data else 0
-                    print(f"Updating {plant.name}: {value}%")
+                    print(f"IO Fetch: {plant.name} -> {value}%")
                     plant.update(value)
                 
             except Exception as e:
-                print(f"Error fetching {plant.feed_id}: {e}")
-        
-        if DEBUG_MODE and CYCLE_DEMO:
-            self.debug_counter += 1
+                print(f"Error updating {plant.feed_id}: {e}")
 
     def run(self):
         """Main loop."""
+        last_rotate: float = time.monotonic()
+        last_fetch: float = 0.0
+        
         while True:
-            self.fetch_data()
-            gc.collect() # Regular cleanup
+            now: float = time.monotonic()
             
-            # Use 15s for demo mode, otherwise use REFRESH_RATE
-            sleep_time = 15 if (DEBUG_MODE and CYCLE_DEMO) else REFRESH_RATE
-            time.sleep(sleep_time)
+            # 1. Fetch data periodically
+            if now - last_fetch >= REFRESH_RATE or last_fetch == 0:
+                self.fetch_data()
+                last_fetch = now
+                gc.collect()
+
+            # 2. Rotate display independent of fetching
+            if now - last_rotate >= ROTATION_INTERVAL:
+                if len(self.plants) > self._max_visible or DISPLAY_MODE == "SPRITE_DEMO":
+                    self.rotate_window()
+                    # In SPRITE_DEMO, rotation also acts as the data update
+                    if DISPLAY_MODE == "SPRITE_DEMO":
+                        self.fetch_data()
+                last_rotate = now
+                
+            time.sleep(1) # Frequency of check
 
 # --- START APP ---
 if __name__ == "__main__":
