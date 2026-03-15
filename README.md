@@ -51,7 +51,7 @@ A distributed plant monitoring system using Adafruit hardware and CircuitPython.
 * **CircuitPython Version:** 9.x or 10.x (stable).
 * **Deep Sleep:** These nodes wake up, measure, transmit, and sleep for 1 hour to save battery.
 
-**File Structure:**
+**File Structure (`sensor-firmware/`):**
 ```text
 CIRCUITPY/
 ├── lib/
@@ -59,7 +59,7 @@ CIRCUITPY/
 │   ├── adafruit_requests.mpy
 │   └── adafruit_seesaw.mpy
 ├── code.py                    # The sensor logic
-└── settings.toml              # WiFi and API keys
+└── settings.toml              # WiFi and API keys (ignored by Git)
 ```
 
 **Configuration (`settings.toml`):**
@@ -77,7 +77,7 @@ SLEEP_SECONDS = 3600          # 1 Hour
 * **Display:** 64x32 Grid with custom "Tom Thumb" font for compact text.
 * **Architecture:** Uses `PlantUI` for component-based rendering and `PlantMonitor` for application logic.
 
-**File Structure:**
+**File Structure (`hub-firmware/`):**
 ```text
 CIRCUITPY/
 ├── fonts/
@@ -94,7 +94,7 @@ CIRCUITPY/
 │   ├── adafruit_requests.mpy
 │   └── neopixel.mpy
 ├── code.py                    # The dashboard logic
-└── settings.toml              # WiFi and API keys
+└── settings.toml              # WiFi and API keys (ignored by Git)
 ```
 
 **Configuration (`settings.toml`):**
