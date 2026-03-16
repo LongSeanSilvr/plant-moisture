@@ -400,17 +400,19 @@ class PlantMonitor:
 
     def discover_plants(self):
         """Scan Adafruit IO for all moisture feeds and setup PlantUI objects."""
+        print("Connecting to network...")
+        self.matrixportal.get_local_time() # Forces a connection check
+        
         print("Discovering moisture sensors on Adafruit IO...")
         try:
             # MatrixPortal stores its network manager which has the IO client
             io = self.matrixportal.network.io_http
             all_feeds = io.get_feeds()
+            print(f"Total feeds found on account: {len(all_feeds)}")
             
             # Filter for feeds ending in '-moisture'
             moisture_feeds = [f for f in all_feeds if f['key'].endswith('-moisture')]
-            
-            if not moisture_feeds:
-                print("No moisture feeds found. Check labels.")
+            print(f"Moisture-specific feeds found: {len(moisture_feeds)}")
             
             for feed in moisture_feeds:
                 f_id = feed['key']
@@ -423,17 +425,18 @@ class PlantMonitor:
                 name = config.get('name', default_name)
                 variant = config.get('variant')
                 
-                print(f"Adding Sensor: {name} (Feed: {f_id})")
+                print(f" -> Adding Sensor: {name} (Feed: {f_id})")
                 p_ui = PlantUI(name, f_id, self.font, self.sprite_sheet, self.palette, variant=variant)
                 self.plants.append(p_ui)
                 
             if not self.plants:
-                print("Fallback: Using placeholder plant.")
+                print("No sensors found via discovery. Using placeholder.")
                 self.plants.append(PlantUI("NONE", "none", self.font, self.sprite_sheet, self.palette))
 
         except Exception as e:
             print(f"Discovery Error: {e}")
-            # Fallback to local config if discovery fails
+            # Fallback to local config ONLY if discovery actually crashed
+            print("Falling back to PLANT_CONFIG...")
             for f_id, config in PLANT_CONFIG.items():
                 p_ui = PlantUI(config['name'], f_id, self.font, self.sprite_sheet, self.palette, variant=config.get('variant'))
                 self.plants.append(p_ui)
