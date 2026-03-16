@@ -12,7 +12,7 @@ from adafruit_io.adafruit_io import IO_HTTP
 from sprites import SPRITE_DATA
 
 # ---- INIT ----
-matrix = Matrix(bit_depth=1)
+matrix = Matrix(bit_depth=2)
 display = matrix.display
 display.brightness = 0.5
 
