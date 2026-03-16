@@ -11,10 +11,9 @@ from adafruit_display_text import label
 from adafruit_bitmap_font import bitmap_font
 
 # --- CONSTANTS & CONFIG ---
-# PLANT_CONFIG can still be used to override names/variants for known feeds
+# Use this to override labels or variants for specific feed keys
 PLANT_CONFIG = {
-    "plant-1-moisture": {"name": "FIG", "variant": 1},
-    "plant-2-moisture": {"name": "IVY", "variant": 10}, # Monstera
+    # Example: "plant-1-moisture": {"name": "FIG", "variant": 1},
 }
 REFRESH_RATE = 600
 ROTATION_INTERVAL = 15  # Seconds between plant rotations
@@ -400,43 +399,44 @@ class PlantMonitor:
 
     def discover_plants(self):
         """Scan Adafruit IO for all moisture feeds and setup PlantUI objects."""
-        print("Connecting to network...")
-        self.matrixportal.get_local_time() # Forces a connection check
+        print("Waiting for network connection...")
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.matrixportal.get_local_time() # Forces connection
+                print("Network connected.")
+                break
+            except Exception as e:
+                print(f"Connection attempt {attempt+1}/{max_retries} failed: {e}")
+                time.sleep(2)
         
         print("Discovering moisture sensors on Adafruit IO...")
         try:
-            # MatrixPortal stores its network manager which has the IO client
             io = self.matrixportal.network.io_http
             all_feeds = io.get_feeds()
-            print(f"Total feeds found on account: {len(all_feeds)}")
+            print(f"Total feeds found: {len(all_feeds)}")
             
-            # Filter for feeds ending in '-moisture'
             moisture_feeds = [f for f in all_feeds if f['key'].endswith('-moisture')]
-            print(f"Moisture-specific feeds found: {len(moisture_feeds)}")
+            print(f"Moisture sensors detected: {len(moisture_feeds)}")
             
             for feed in moisture_feeds:
                 f_id = feed['key']
-                
-                # Check for overrides in PLANT_CONFIG
                 config = PLANT_CONFIG.get(f_id, {})
-                
-                # Auto-name: Extract 'plant-1' from 'plant-1-moisture' if no override
                 default_name = f_id.replace('-moisture', '').upper()
                 name = config.get('name', default_name)
                 variant = config.get('variant')
                 
-                print(f" -> Adding Sensor: {name} (Feed: {f_id})")
+                print(f" -> Adding {name} ({f_id})")
                 p_ui = PlantUI(name, f_id, self.font, self.sprite_sheet, self.palette, variant=variant)
                 self.plants.append(p_ui)
                 
             if not self.plants:
-                print("No sensors found via discovery. Using placeholder.")
+                print("No live moisture feeds found. Check Adafruit IO.")
                 self.plants.append(PlantUI("NONE", "none", self.font, self.sprite_sheet, self.palette))
 
         except Exception as e:
             print(f"Discovery Error: {e}")
-            # Fallback to local config ONLY if discovery actually crashed
-            print("Falling back to PLANT_CONFIG...")
+            print("Falling back to hardcoded config...")
             for f_id, config in PLANT_CONFIG.items():
                 p_ui = PlantUI(config['name'], f_id, self.font, self.sprite_sheet, self.palette, variant=config.get('variant'))
                 self.plants.append(p_ui)
