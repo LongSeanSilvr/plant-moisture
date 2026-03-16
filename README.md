@@ -20,6 +20,11 @@ A distributed plant monitoring system using Adafruit hardware and CircuitPython.
 
 ## 🛠 Assembly
 
+### Software Features
+- **Dynamic Feed Discovery**: The dashboard automatically scans Adafruit IO for all feeds ending in `-moisture` and adds them to the rotation. No manual configuration required for new sensors!
+- **Battery Monitoring**: Telemetry includes a calibrated battery percentage (0-100%) for power management.
+- **Dynamic Calibration**: Sensor nodes read `DRY_VAL` and `WET_VAL` directly from `settings.toml` without firmware reflashing.
+
 ### Sensor Nodes
 1.  **Soldering:** Solder the **LiPo Charger BFF** to the back of the **QT Py ESP32-S3**.
     * *Note:* Ensure the "Top" of the BFF aligns with the "Top" of the QT Py (USB port side).
