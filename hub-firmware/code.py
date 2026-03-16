@@ -5,22 +5,22 @@ import displayio
 import math
 import gc
 import random
+import os
 from adafruit_matrixportal.matrixportal import MatrixPortal
 from adafruit_display_text import label
 from adafruit_bitmap_font import bitmap_font
 
 # --- CONSTANTS & CONFIG ---
+# PLANT_CONFIG can still be used to override names/variants for known feeds
 PLANT_CONFIG = {
-    "plant-1": {"name": "FIG", "variant": 1},
-    "plant-2": {"name": "IVY", "variant": 2},
-    "plant-3": {"name": "PAL", "variant": 8},
-    "plant-4": {"name": "SNA", "variant": 9},
+    "plant-1-moisture": {"name": "FIG", "variant": 1},
+    "plant-2-moisture": {"name": "IVY", "variant": 10}, # Monstera
 }
 REFRESH_RATE = 600
 ROTATION_INTERVAL = 15  # Seconds between plant rotations
 
 # Display Modes: "NORMAL", "SPRITE_DEMO", "FEED_DEBUG"
-DISPLAY_MODE = "FEED_DEBUG" 
+DISPLAY_MODE = "NORMAL" 
 
 # Color Palette (HSL-adjacent visuals)
 COLORS = {
@@ -150,7 +150,7 @@ SPRITE_DATA = [
         "0000000000000000"
         "0000000000000000"
     ),
-    # VARIANT 6: Rosette Succulent (TWEAKED: Added Face)
+    # VARIANT 6: Rosette Succulent
     (
         "0000000000000000"
         "0000000000000000"
@@ -173,7 +173,7 @@ SPRITE_DATA = [
         "0000000000000000"
         "0000000000000000"
     ),
-    # VARIANT 7: Trailing Vine (TWEAKED: Connected to pot)
+    # VARIANT 7: Trailing Vine
     (
         "0000000000000000"
         "0000000000000000"
@@ -219,7 +219,7 @@ SPRITE_DATA = [
         "0000000000000000"
         "0000000000000000"
     ),
-    # VARIANT 9: Snake Plant (Vertical Basal Leaves)
+    # VARIANT 9: Snake Plant
     (
         "0000000000000000"
         "0000000010000000"
@@ -242,7 +242,7 @@ SPRITE_DATA = [
         "0000000000000000"
         "0000000000000000"
     ),
-    # VARIANT 10: Monstera (Fenestrated Broadleaf)
+    # VARIANT 10: Monstera
     (
         "0000000000000000"
         "0000000000000000"
@@ -329,7 +329,9 @@ class PlantUI:
         if variant is not None:
             self.assigned_variant = (variant - 1) % num_healthy
         else:
-            self.assigned_variant = random.randint(0, num_healthy - 1)
+            # Consistent variant assignment based on feed_id hash
+            feed_hash = sum(ord(c) for c in feed_id)
+            self.assigned_variant = feed_hash % num_healthy
             
         self.group = displayio.Group()
         
@@ -391,18 +393,50 @@ class PlantMonitor:
         self._window_start = 0
         self._max_visible = 3
         
-        # Initialize all plants
-        for feed, config in PLANT_CONFIG.items():
-            if isinstance(config, dict):
-                name = config["name"]
-                variant = config.get("variant")
-            else:
-                name = config
-                variant = None
-            p_ui = PlantUI(name, feed, self.font, self.sprite_sheet, self.palette, variant=variant)
-            self.plants.append(p_ui)
+        # 1. Discover Feeds
+        self.discover_plants()
             
         self._update_display()
+
+    def discover_plants(self):
+        """Scan Adafruit IO for all moisture feeds and setup PlantUI objects."""
+        print("Discovering moisture sensors on Adafruit IO...")
+        try:
+            # MatrixPortal stores its network manager which has the IO client
+            io = self.matrixportal.network.io_http
+            all_feeds = io.get_feeds()
+            
+            # Filter for feeds ending in '-moisture'
+            moisture_feeds = [f for f in all_feeds if f['key'].endswith('-moisture')]
+            
+            if not moisture_feeds:
+                print("No moisture feeds found. Check labels.")
+            
+            for feed in moisture_feeds:
+                f_id = feed['key']
+                
+                # Check for overrides in PLANT_CONFIG
+                config = PLANT_CONFIG.get(f_id, {})
+                
+                # Auto-name: Extract 'plant-1' from 'plant-1-moisture' if no override
+                default_name = f_id.replace('-moisture', '').upper()
+                name = config.get('name', default_name)
+                variant = config.get('variant')
+                
+                print(f"Adding Sensor: {name} (Feed: {f_id})")
+                p_ui = PlantUI(name, f_id, self.font, self.sprite_sheet, self.palette, variant=variant)
+                self.plants.append(p_ui)
+                
+            if not self.plants:
+                print("Fallback: Using placeholder plant.")
+                self.plants.append(PlantUI("NONE", "none", self.font, self.sprite_sheet, self.palette))
+
+        except Exception as e:
+            print(f"Discovery Error: {e}")
+            # Fallback to local config if discovery fails
+            for f_id, config in PLANT_CONFIG.items():
+                p_ui = PlantUI(config['name'], f_id, self.font, self.sprite_sheet, self.palette, variant=config.get('variant'))
+                self.plants.append(p_ui)
 
     def _load_font(self):
         try:
@@ -412,6 +446,7 @@ class PlantMonitor:
 
     def _create_palette(self):
         palette = displayio.Palette(5)
+        # 0: Black, 1: Green, 2: Yellow, 3: Red, 4: Brown
         palette[0] = COLORS["BLACK"]
         palette[1] = COLORS["GREEN"]
         palette[2] = COLORS["YELLOW"]
@@ -420,7 +455,6 @@ class PlantMonitor:
         return palette
 
     def _create_sprite_sheet(self):
-        # 10 sprites total (8 healthy + 2 state)
         num_sprites = len(SPRITE_DATA)
         sheet = displayio.Bitmap(16 * num_sprites, 20, 5)
         for s, data in enumerate(SPRITE_DATA):
@@ -432,28 +466,25 @@ class PlantMonitor:
 
     def _update_display(self):
         """Update which plants are visible and their positions."""
-        # Clear current group
         while len(self.group) > 0:
             self.group.pop()
             
         num_plants = len(self.plants)
         visible_count = min(num_plants, self._max_visible)
         
-        # Calculate Layout for visible window
-        sprite_w: int = PlantUI.SPRITE_W
-        gap: int = 3
-        total_w: int = (visible_count * sprite_w) + ((visible_count - 1) * gap)
+        sprite_w = PlantUI.SPRITE_W
+        gap = 3
+        total_w = (visible_count * sprite_w) + ((visible_count - 1) * gap)
         
         if total_w > 64:
             gap = (64 - (visible_count * sprite_w)) // (visible_count - 1) if visible_count > 1 else 0
             total_w = (visible_count * sprite_w) + ((visible_count - 1) * gap)
         
-        margin_left: int = (64 - total_w) // 2
+        margin_left = (64 - total_w) // 2
 
         for i in range(visible_count):
             idx = (self._window_start + i) % num_plants
             plant = self.plants[idx]
-            
             x_pos = margin_left + (i * (sprite_w + gap))
             plant.set_position(x_pos)
             self.group.append(plant.group)
@@ -465,59 +496,46 @@ class PlantMonitor:
 
     def fetch_data(self):
         """Fetch moisture levels and update UI."""
+        print(f"Fetching updates for {len(self.plants)} plants...")
         for i, plant in enumerate(self.plants):
             try:
                 if DISPLAY_MODE == "SPRITE_DEMO":
-                    # Cycle through ALL 12 sprites (10 variants + 2 states)
                     num_all = len(SPRITE_DATA)
-                    # We use i to offset so each visible plant shows a different sprite
                     sprite_idx = (self._window_start + i) % num_all 
                     plant.pct_label.text = f"S{sprite_idx}"
                     plant.tile_grid[0] = sprite_idx
-                    print(f"Demo: {plant.name} -> Sprite {sprite_idx}")
-                    
                 elif DISPLAY_MODE == "FEED_DEBUG":
-                    # Forced states: Healthy, Thirsty, Critical, Healthy
                     test_vals = [85, 42, 12, 65]
                     value = test_vals[i % len(test_vals)]
-                    print(f"Debug: {plant.name} -> {value}%")
                     plant.update(value)
-                    
                 else: # NORMAL mode
+                    if plant.feed_id == "none":
+                        continue
                     data = self.matrixportal.get_io_data(plant.feed_id)
                     value = int(float(data[0]['value'])) if data else 0
-                    print(f"IO Fetch: {plant.name} -> {value}%")
+                    print(f" -> {plant.name}: {value}%")
                     plant.update(value)
-                
             except Exception as e:
                 print(f"Error updating {plant.feed_id}: {e}")
 
     def run(self):
         """Main loop."""
-        last_rotate: float = time.monotonic()
-        last_fetch: float = 0.0
+        last_rotate = time.monotonic()
+        last_fetch = 0.0
         
         while True:
-            now: float = time.monotonic()
-            
-            # 1. Fetch data periodically
+            now = time.monotonic()
             if now - last_fetch >= REFRESH_RATE or last_fetch == 0:
                 self.fetch_data()
                 last_fetch = now
                 gc.collect()
 
-            # 2. Rotate display independent of fetching
             if now - last_rotate >= ROTATION_INTERVAL:
-                if len(self.plants) > self._max_visible or DISPLAY_MODE == "SPRITE_DEMO":
+                if len(self.plants) > self._max_visible:
                     self.rotate_window()
-                    # In SPRITE_DEMO, rotation also acts as the data update
-                    if DISPLAY_MODE == "SPRITE_DEMO":
-                        self.fetch_data()
                 last_rotate = now
-                
-            time.sleep(1) # Frequency of check
+            time.sleep(1)
 
-# --- START APP ---
 if __name__ == "__main__":
     app = PlantMonitor()
     app.run()
