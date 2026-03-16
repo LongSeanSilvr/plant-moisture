@@ -119,7 +119,8 @@ class PlantMonitor:
             
         self.sheet = displayio.Bitmap(16 * len(SPRITE_DATA), 20, 5)
         for s, d in enumerate(SPRITE_DATA):
-            for i in range(320): self.sheet[s*16+(i%16), i//16] = int(d[i])
+            for i in range(len(d)):
+                self.sheet[s*16+(i%16), i//16] = int(d[i])
         
         # Status Label
         self.status = label.Label(self.font, text="BOOTING...", color=COLORS["GREEN"])
