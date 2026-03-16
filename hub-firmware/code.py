@@ -42,7 +42,7 @@ def make_plant(name, x, variant):
     g = displayio.Group()
     g.x = x
     tg = displayio.TileGrid(sheet, pixel_shader=palette, width=1, height=1, tile_width=16, tile_height=20)
-    tg.x = 2
+    tg.x = 1
     tg.y = 6
     g.append(tg)
     pct = label.Label(font, text="--%", color=0xAAAAAA)
