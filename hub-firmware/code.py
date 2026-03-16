@@ -388,17 +388,26 @@ class PlantMonitor:
         self.palette = self._create_palette()
         self.sprite_sheet = self._create_sprite_sheet()
         
+        # Initial Status Label
+        self.status_label = label.Label(self.font, text="Connecting...", color=COLORS["TEXT"])
+        self.status_label.anchor_point = (0.5, 0.5)
+        self.status_label.anchored_position = (32, 16)
+        self.group.append(self.status_label)
+        
         self.plants = []
         self._window_start = 0
         self._max_visible = 3
         
         # 1. Discover Feeds
         self.discover_plants()
-            
+        
+        # Remove status label before starting
+        self.group.remove(self.status_label)
         self._update_display()
 
     def discover_plants(self):
         """Scan Adafruit IO for all moisture feeds and setup PlantUI objects."""
+        self.status_label.text = "WiFi..."
         print("Waiting for network connection...")
         max_retries = 3
         for attempt in range(max_retries):
@@ -410,13 +419,22 @@ class PlantMonitor:
                 print(f"Connection attempt {attempt+1}/{max_retries} failed: {e}")
                 time.sleep(2)
         
+        self.status_label.text = "Scanning..."
         print("Discovering moisture sensors on Adafruit IO...")
         try:
+            # Note: We use the underlying network client to list feeds
             io = self.matrixportal.network.io_http
             all_feeds = io.get_feeds()
             print(f"Total feeds found: {len(all_feeds)}")
             
-            moisture_feeds = [f for f in all_feeds if f['key'].endswith('-moisture')]
+            # Filter for feeds ending in '-moisture'
+            moisture_feeds = []
+            for f in all_feeds:
+                # Key check (with robustness for case/types)
+                key = str(f.get('key', '')).lower()
+                if key.endswith('-moisture'):
+                    moisture_feeds.append(f)
+            
             print(f"Moisture sensors detected: {len(moisture_feeds)}")
             
             for feed in moisture_feeds:
@@ -431,15 +449,17 @@ class PlantMonitor:
                 self.plants.append(p_ui)
                 
             if not self.plants:
-                print("No live moisture feeds found. Check Adafruit IO.")
-                self.plants.append(PlantUI("NONE", "none", self.font, self.sprite_sheet, self.palette))
+                print("No live moisture feeds found. Check labels.")
+                self.plants.append(PlantUI("EMPTY", "none", self.font, self.sprite_sheet, self.palette))
 
         except Exception as e:
             print(f"Discovery Error: {e}")
+            self.status_label.text = "Error!"
+            time.sleep(2)
             print("Falling back to hardcoded config...")
-            for f_id, config in PLANT_CONFIG.items():
-                p_ui = PlantUI(config['name'], f_id, self.font, self.sprite_sheet, self.palette, variant=config.get('variant'))
-                self.plants.append(p_ui)
+            # Emergency placeholder if discovery crashes
+            if not self.plants:
+                self.plants.append(PlantUI("ERR", "none", self.font, self.sprite_sheet, self.palette))
 
     def _load_font(self):
         try:
