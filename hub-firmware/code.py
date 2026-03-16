@@ -1,12 +1,14 @@
 import time
 import gc
 import board
+import os
 import displayio
 import terminalio
 from adafruit_matrixportal.matrix import Matrix
 from adafruit_display_text import label
 from adafruit_bitmap_font import bitmap_font
 from adafruit_matrixportal.network import Network
+from adafruit_io.adafruit_io import IO_HTTP
 from sprites import SPRITE_DATA
 
 # ---- INIT ----
@@ -63,20 +65,19 @@ display.root_group = status_group
 
 # ---- NETWORK ----
 plants = []
+aio_client = None
 try:
     net = Network(debug=False)
     net.connect()
-    status_lbl.text = "SCANNING..."
-    feeds = net.io_http.get_feeds()
-    for f in feeds:
-        k = str(f.get("key", ""))
-        if k.endswith("-moisture"):
-            plant_name = k.replace("-moisture", "")
-            variant = sum(ord(c) for c in k) % NUM_HEALTHY
-            plants.append({"key": k, "name": plant_name, "variant": variant, "moisture": None})
+    aio_username = os.getenv("AIO_USERNAME")
+    aio_key = os.getenv("AIO_KEY")
+    aio_client = IO_HTTP(aio_username, aio_key, net.requests)
+    # receive_data returns dict, just confirm connection works
+    status_lbl.text = "CONNECTED"
 except Exception as e:
     print(f"Network error: {e}")
 
+# Default to known feed — dynamic discovery can be added later
 if not plants:
     plants = [{"key": "plant-1-moisture", "name": "fig", "variant": 0, "moisture": None}]
 
@@ -106,14 +107,15 @@ while True:
         for w in plant_widgets:
             p = w["data"]
             try:
-                val_str = net.io_http.receive_data(p["key"])
-                val = int(float(val_str))
+                print(f"Fetching {p['key']}...")
+                resp = aio_client.receive_data(p["key"])
+                val = int(float(resp["value"]))
                 p["moisture"] = val
                 w["pct"].text = f"{val}%"
                 w["tg"][0] = sprite_index(val, p["variant"])
-                print(f"{p['name']}: {val}%")
+                print(f"  {p['name']}: {val}%")
             except Exception as e:
-                print(f"Update error {p['name']}: {e}")
+                print(f"Fetch error {p['name']}: {e}")
         last_update = time.monotonic()
         gc.collect()
 
