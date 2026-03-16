@@ -5,13 +5,18 @@ import busio
 import wifi
 import adafruit_connection_manager
 import adafruit_requests
+import analogio
 from adafruit_io.adafruit_io import IO_HTTP, AdafruitIO_RequestError
 from adafruit_seesaw.seesaw import Seesaw
 
 # 1. Hardware Initialization
-print("Initializing Firmware (Dynamic Calibration)...")
+print("Restoring Always-On Loop...")
+print("Initializing Hardware...")
 i2c_bus = board.STEMMA_I2C()
 soil_sensor = Seesaw(i2c_bus, addr=0x36)
+
+# Battery monitor on pin A2 (halved via voltage divider on BFF)
+vbat_pin = analogio.AnalogIn(board.A2)
 
 # 2. Network Authentication
 print(f"Connecting to SSID: {os.getenv('CIRCUITPY_WIFI_SSID')}")
@@ -28,13 +33,18 @@ io_client = IO_HTTP(os.getenv("AIO_USERNAME"), os.getenv("AIO_KEY"), requests)
 base_feed_name = os.getenv("AIO_FEED_NAME", "plant-1")
 feed_moisture_name = f"{base_feed_name}-moisture"
 feed_temp_name = f"{base_feed_name}-temperature"
+feed_battery_name = f"{base_feed_name}-battery"
 
 try:
     moisture_feed = io_client.get_feed(feed_moisture_name)
     temp_feed = io_client.get_feed(feed_temp_name)
+    battery_feed = io_client.get_feed(feed_battery_name)
+    print("All feeds located.")
 except AdafruitIO_RequestError:
+    print("Generating mission-critical feeds...")
     moisture_feed = io_client.create_new_feed(feed_moisture_name)
     temp_feed = io_client.create_new_feed(feed_temp_name)
+    battery_feed = io_client.create_new_feed(feed_battery_name)
 
 # 5. Calibration Helper
 def map_range(x, in_min, in_max, out_min, out_max):
@@ -56,15 +66,18 @@ while True:
         temperature_c = soil_sensor.get_temp()
         temperature_f = temperature_c * 9 / 5 + 32
         
+        # Calculate Battery Voltage (halved via divider, 3.3V ref)
+        battery_voltage = (vbat_pin.value * 3.3 * 2) / 65535
+        
         # Calculate Percentage using current dry/wet values
         moisture_percent = int(map_range(moisture_val, dry, wet, 0, 100))
         
-        print(f"DEBUG: Read DRY_VAL='{dry_val}' -> using {dry}")
-        print(f"Telemetry -> Raw: {moisture_val} | Moisture: {moisture_percent}%")
+        print(f"Update -> Raw: {moisture_val} | Moisture: {moisture_percent}% | Battery: {battery_voltage:.2f}V")
 
         # Transmit
         io_client.send_data(moisture_feed["key"], moisture_percent)
         io_client.send_data(temp_feed["key"], f"{temperature_f:.2f}")
+        io_client.send_data(battery_feed["key"], f"{battery_voltage:.2f}")
         print("Sent successfully.")
 
     except Exception as e:
