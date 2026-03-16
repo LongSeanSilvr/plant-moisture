@@ -28,7 +28,7 @@ for i, c in enumerate([0x000000, 0x00FF00, 0xFFFF00, 0xFF0000, 0x884400]):
 
 sheet = displayio.Bitmap(16 * len(SPRITE_DATA), 20, 5)
 for s, d in enumerate(SPRITE_DATA):
-    for i in range(min(len(d), 320)):
+    for i in range(320):
         sheet[s * 16 + (i % 16), i // 16] = int(d[i])
 
 NUM_HEALTHY = len(SPRITE_DATA) - 2
