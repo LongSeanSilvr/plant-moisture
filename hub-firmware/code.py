@@ -3,21 +3,37 @@ import board
 import digitalio
 import gc
 
-# 1. VISUAL HEARTBEAT (Confirm board is alive)
+# Status LED Configuration
 pixel = digitalio.DigitalInOut(board.NEOPIXEL)
 pixel.direction = digitalio.Direction.OUTPUT
-print("BOOTING...")
-for i in range(10):
-    pixel.value = (i % 2 == 0)
-    time.sleep(1)
-pixel.value = False
-gc.collect()
 
-# 2. IMMEDIATE DISPLAY INIT (No heavy imports yet!)
+def set_pixel(val):
+    pixel.value = val
+
+print("BOOT START")
+
+# 1. PURPLE BLINK (Stabilization 10s)
+for i in range(10):
+    set_pixel(True)
+    time.sleep(0.5)
+    set_pixel(False)
+    time.sleep(0.5)
+
+# 2. SOLID ON (Loading Libs)
+set_pixel(True)
 import displayio
 import terminalio
 from adafruit_matrixportal.matrix import Matrix
 from adafruit_display_text import label
+import adafruit_requests
+from adafruit_matrixportal.network import Network
+from adafruit_bitmap_font import bitmap_font
+gc.collect()
+
+# 3. ON/OFF RAPID (Init Display)
+for i in range(10):
+    set_pixel(True); time.sleep(0.1)
+    set_pixel(False); time.sleep(0.1)
 
 matrix = Matrix(bit_depth=1)
 display = matrix.display
@@ -28,22 +44,11 @@ status = label.Label(terminalio.FONT, text="BOOTING...", color=0x00FF00)
 status.anchor_point, status.anchored_position = ((0.5, 0.5), (32, 16))
 main_group.append(status)
 
-def set_status(txt):
-    print(f"STATUS: {txt}")
-    status.text = txt
-    gc.collect()
-
-# 3. GRADUAL ASSET LOAD
-set_status("LIBS...")
-import adafruit_requests
-from adafruit_matrixportal.network import Network
-from adafruit_bitmap_font import bitmap_font
-
-set_status("FONT...")
+# Load Font
 try: font = bitmap_font.load_font("/fonts/tom-thumb.bdf")
 except: font = terminalio.FONT
 
-set_status("GRAPHICS...")
+# Sprites
 SPRITE_DATA = [
     "00000000000000000000000000000000000000000100000000000001110000000000001111100000000011100111000000011110011110000011101001011100011110100101111001111110011111100111011001101110001111111111110000011010010110000000111111110000000444444444400000444444444444000044444444444400000444444444400000000000000000000000000000000000",
     "0000000000000000000000000000000000000001100000000000000110001100000110011001110000011001100110000001100110011000000111111001100000001111111110000000000111110000000000011000000000000000110000000000000001100000000000000011000000000000444444444400000444444444444000044444444444400000444444444400000000000000000000000000000000000",
@@ -72,12 +77,13 @@ class PlantUI:
         self.pct.text = f"{val}%"
         self.tg[0] = 0 if val >= 50 else (1 if val >= 20 else 2)
 
-# 4. NETWORK & HUB
-set_status("WIFI...")
+# 4. WIFI (Solid On during connect)
+set_pixel(True)
+status.text = "WIFI..."
 try:
     network = Network(debug=False)
     network.connect()
-    set_status("SCAN...")
+    status.text = "SCAN..."
     io = network.io_http
     feeds = io.get_feeds()
     plants = []
@@ -91,22 +97,21 @@ except Exception as e:
 
 if not plants: plants = [PlantUI("FIG", "plant-1-moisture")]
 
-set_status("DONE")
+# SUCCESS
 main_group.remove(status)
 for i, p in enumerate(plants[:3]):
     p.group.x = (64 - (len(plants[:3])*19))//2 + (i * 19)
     main_group.append(p.group)
 
-last_fetch = 0
+# 5. RUN LOOP (Breath effect)
 while True:
-    if time.monotonic() - last_fetch > 600 or last_fetch == 0:
-        print("Update...")
-        for p in plants:
-            try:
-                # Use simplified io_http request
-                data = network.io_http.get(f"https://io.adafruit.com/api/v2/{network.user}/feeds/{p.f_id}/data/last")
-                val = data.json().get('value', 0)
-                p.update(int(float(val)))
-            except: pass
-        last_fetch = time.monotonic()
-    time.sleep(1)
+    for i in range(100):
+        set_pixel(i % 10 == 0) # Tiny tick
+        time.sleep(0.1)
+    # Fetch
+    for p in plants:
+        try:
+            data = network.io_http.get(f"https://io.adafruit.com/api/v2/{network.user}/feeds/{p.f_id}/data/last")
+            p.update(int(float(data.json().get('value', 0))))
+        except: pass
+    gc.collect()
