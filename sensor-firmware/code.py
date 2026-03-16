@@ -30,21 +30,18 @@ requests = adafruit_requests.Session(pool, ssl_context)
 io_client = IO_HTTP(os.getenv("AIO_USERNAME"), os.getenv("AIO_KEY"), requests)
 
 # 4. Feed Allocation
-base_feed_name = os.getenv("AIO_FEED_NAME", "plant-1")
-feed_moisture_name = f"{base_feed_name}-moisture"
-feed_temp_name = f"{base_feed_name}-temperature"
-feed_battery_name = f"{base_feed_name}-battery"
+def get_or_create_feed(client, name):
+    try:
+        return client.get_feed(name)
+    except AdafruitIO_RequestError:
+        print(f"Creating feed: {name}")
+        return client.create_new_feed(name)
 
-try:
-    moisture_feed = io_client.get_feed(feed_moisture_name)
-    temp_feed = io_client.get_feed(feed_temp_name)
-    battery_feed = io_client.get_feed(feed_battery_name)
-    print("All feeds located.")
-except AdafruitIO_RequestError:
-    print("Generating mission-critical feeds...")
-    moisture_feed = io_client.create_new_feed(feed_moisture_name)
-    temp_feed = io_client.create_new_feed(feed_temp_name)
-    battery_feed = io_client.create_new_feed(feed_battery_name)
+base_feed_name = os.getenv("AIO_FEED_NAME", "plant-1")
+moisture_feed = get_or_create_feed(io_client, f"{base_feed_name}-moisture")
+temp_feed = get_or_create_feed(io_client, f"{base_feed_name}-temperature")
+battery_feed = get_or_create_feed(io_client, f"{base_feed_name}-battery")
+print("All feeds verified.")
 
 # 5. Calibration Helper
 def map_range(x, in_min, in_max, out_min, out_max):
