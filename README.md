@@ -21,7 +21,7 @@ A distributed plant monitoring system using Adafruit hardware and CircuitPython.
 ## 🛠 Assembly
 
 ### Software Features
-- **Dynamic Feed Discovery**: The dashboard automatically scans Adafruit IO for all feeds ending in `-moisture` and adds them to the rotation. No manual configuration required for new sensors!
+- **Centralized Mapping**: The dashboard maps generic sensor feeds (e.g., `sensor-1-moisture`) to custom names and sprite variants via a local `plants.json` file. No sensor reflashing required to swap plants!
 - **Battery Monitoring**: Telemetry includes a calibrated battery percentage (0-100%) for power management.
 - **Dynamic Calibration**: Sensor nodes read `DRY_VAL` and `WET_VAL` directly from `settings.toml` without firmware reflashing.
 
@@ -42,10 +42,10 @@ A distributed plant monitoring system using Adafruit hardware and CircuitPython.
 ## ☁️ Adafruit IO Setup
 
 1.  Create an account at [io.adafruit.com](https://io.adafruit.com).
-2.  Create **Feeds** for each plant. Naming convention used in this code:
-    * `plant-1`
-    * `plant-2`
-    * `plant-3`
+2.  Create **Feeds** for each sensor. We recommend using generic names so the sensor firmware never needs to change:
+    * `sensor-1-moisture`
+    * `sensor-2-moisture`
+    * `sensor-3-moisture`
 3.  Note your **AIO Username** and **AIO Key** (found by clicking the yellow key icon on the dashboard).
 
 ---
@@ -127,16 +127,17 @@ The hub uses a custom sprite system designed for the 64x32 matrix.
 *   **Optimization:** Configured with `bit_depth=2` for memory efficiency on the M4.
 *   **Variants:** Includes 10 unique healthy plant variants (Broadleaf, Cactus, Fern, Bonsai, Bamboo, Succulent, Vine, Palm, Snake Plant, Monstera) plus 2 universal health states (Thirsty, Critical).
 
-**Plant Configuration (`code.py`):**
-```python
-PLANT_CONFIG = {
-    "plant-1": {"name": "FIG", "variant": 1},
-    "plant-2": {"name": "IVY", "variant": 2},
-    "plant-3": {"name": "PAL", "variant": 8},
-    "plant-4": {"name": "SNA", "variant": 9},
-}
+**Plant Configuration (`plants.json`):**
+Create this file in the root of the Hub's `CIRCUITPY` drive.
+```json
+[
+  {"key": "sensor-1-moisture", "name": "FERN", "variant": 0},
+  {"key": "sensor-2-moisture", "name": "SNAK", "variant": 1}
+]
 ```
-*Assign a variant (1-10) to each feed ID to customize your dashboard.*
+*   `key`: The Adafruit IO feed key (e.g., `sensor-1-moisture`).
+*   `name`: 4-character label displayed on the matrix.
+*   `variant`: Sprite index (0-9 for healthy variants).
 
 ---
 

@@ -2,6 +2,7 @@ import time
 import gc
 import board
 import os
+import json
 import displayio
 import terminalio
 from adafruit_matrixportal.matrix import Matrix
@@ -77,9 +78,18 @@ try:
 except Exception as e:
     print(f"Network error: {e}")
 
-# Default to known feed — dynamic discovery can be added later
-if not plants:
-    plants = [{"key": "plant-1-moisture", "name": "lgp", "variant": 7, "moisture": None}]
+# ---- CONFIG ----
+plants = []
+try:
+    with open("/plants.json", "r") as f:
+        plants = json.load(f)
+    for p in plants:
+        p["moisture"] = None
+    print(f"Loaded {len(plants)} plants from config.")
+except Exception as e:
+    print(f"Config error: {e}")
+    # Fallback
+    plants = [{"key": "plant-1-moisture", "name": "LGP", "variant": 7, "moisture": None}]
 
 # ---- BUILD UI ----
 main = displayio.Group()
@@ -98,8 +108,8 @@ gc.collect()
 print(f"UI ready. {gc.mem_free()} bytes free.")
 
 # ---- MAIN LOOP ----
-last_update = 0
-UPDATE_INTERVAL = 600  # 10 min
+last_update = 0.0
+UPDATE_INTERVAL = 600.0  # 10 min
 
 while True:
     now = time.monotonic()
