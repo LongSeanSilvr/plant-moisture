@@ -64,13 +64,13 @@ while True:
         temperature_c = soil_sensor.get_temp()
         temperature_f = temperature_c * 9 / 5 + 32
         
-        # Calculate Battery Voltage (halved via divider, 3.3V ref, 0.9 correction)
-        battery_voltage = (vbat_pin.value * 3.3 * 2 * 0.9) / 65535
+        # Calculate Battery Voltage (halved via divider, 3.3V ref)
+        battery_voltage = (vbat_pin.value * 3.3 * 2) / 65535
         
         # Calculate Percentages
         moisture_percent = int(map_range(moisture_val, dry, wet, 0, 100))
-        # Battery range: 3.2V (0%) to 4.15V (100%)
-        battery_percent = int(map_range(battery_voltage, 3.2, 4.15, 0, 100))
+        # Battery range: 3.0V (0%) to 4.2V (100%)
+        battery_percent = int(map_range(battery_voltage, 3.0, 4.2, 0, 100))
         
         print(f"Update -> Moist: {moisture_percent}% | Temp: {temperature_f:.1f}F | Battery: {battery_percent}% ({battery_voltage:.2f}V)")
 
