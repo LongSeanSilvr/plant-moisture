@@ -79,7 +79,7 @@ except Exception as e:
 
 # Default to known feed — dynamic discovery can be added later
 if not plants:
-    plants = [{"key": "plant-1-moisture", "name": "fig", "variant": 0, "moisture": None}]
+    plants = [{"key": "plant-1-moisture", "name": "lgp", "variant": 7, "moisture": None}]
 
 # ---- BUILD UI ----
 main = displayio.Group()
