@@ -59,10 +59,15 @@ A distributed plant monitoring system using Adafruit hardware and CircuitPython.
 **File Structure (`sensor-firmware/`):**
 ```text
 CIRCUITPY/
-├── lib/
-│   ├── adafruit_bus_device/   # Folder
+├── lib/                       # NOW INCLUDED in this repo!
+│   ├── adafruit_bus_device/
+│   ├── adafruit_connection_manager.mpy
+│   ├── adafruit_io/
+│   ├── adafruit_logging.mpy
+│   ├── adafruit_minimqtt/
 │   ├── adafruit_requests.mpy
-│   └── adafruit_seesaw.mpy
+│   ├── adafruit_seesaw/
+│   └── adafruit_ticks.mpy
 ├── code.py                    # The sensor logic
 └── settings.toml              # WiFi and API keys (ignored by Git)
 ```

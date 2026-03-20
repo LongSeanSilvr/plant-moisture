@@ -2,8 +2,8 @@ CIRCUITPY_WIFI_SSID = "YOUR_WIFI_NAME"
 CIRCUITPY_WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
 AIO_USERNAME = "YOUR_ADAFRUIT_IO_USERNAME"
 AIO_KEY = "YOUR_ADAFRUIT_IO_KEY"
-AIO_FEED_NAME = "plant-1"
-SLEEP_SECONDS = 3600
+AIO_FEED_NAME = "plant-1"     # CHANGE THIS per board (plant-2, plant-3, etc)
+SLEEP_SECONDS = 3600          # Deep sleep duration (1 hour recommended)
 
 # Calibration: Raw capacitance values (min/max)
 DRY_VAL = 330
