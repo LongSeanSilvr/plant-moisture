@@ -7,11 +7,11 @@
   {
     "key": "plant-2-moisture",
     "name": "PTHS",
-    "variant": 6
+    "variant": 7
   },
   {
     "key": "plant-3-moisture",
     "name": "CACT",
-    "variant": 1
+    "variant": 2
   }
 ]
