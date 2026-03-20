@@ -35,9 +35,11 @@ for s, d in enumerate(SPRITE_DATA):
 NUM_HEALTHY = len(SPRITE_DATA) - 2
 
 def sprite_index(moisture, variant):
+    if moisture is None: return variant % NUM_HEALTHY
     if moisture < 20: return len(SPRITE_DATA) - 1
     if moisture < 50: return len(SPRITE_DATA) - 2
     return variant % NUM_HEALTHY
+
 
 def make_plant(name, x, variant):
     g = displayio.Group()
@@ -45,7 +47,9 @@ def make_plant(name, x, variant):
     tg = displayio.TileGrid(sheet, pixel_shader=palette, width=1, height=1, tile_width=16, tile_height=20)
     tg.x = 1
     tg.y = 6
+    tg[0] = variant % NUM_HEALTHY
     g.append(tg)
+
     pct = label.Label(font, text="--%", color=0xAAAAAA)
     pct.anchor_point = (0.5, 0.0)
     pct.anchored_position = (9, 1)
