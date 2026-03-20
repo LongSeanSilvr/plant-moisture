@@ -8,5 +8,10 @@
     "key": "plant-2-moisture",
     "name": "PTH",
     "variant": 6
+  },
+  {
+    "key": "plant-3-moisture",
+    "name": "CACT",
+    "variant": 1
   }
 ]
