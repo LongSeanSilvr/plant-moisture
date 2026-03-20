@@ -2,15 +2,18 @@
 #
 # Verbatim from origin/main, reformatted as 20 explicit rows of 16 chars.
 #
-# Palette (bit_depth=2 required for correct color rendering):
+# Palette (5 colors, indices 0-4):
+#   - Note: indices 0-4 require value_count=5 (3 bits) in displayio.Bitmap.
+#
 #   0 = BLACK   (0x000000) — background
 #   1 = GREEN   (0x00FF00) — healthy leaves
 #   2 = YELLOW  (0xFFFF00) — thirsty leaves
 #   3 = RED     (0xFF0000) — critical leaves
 #   4 = BROWN   (0x884400) — terracotta pot
 #
-# NOTE: bit_depth=1 renders 0x884400 as pure red (red channel dominates).
-#       Matrix must be initialized with bit_depth=2 for the pot to look brown.
+# Rendering Note:
+#   The Matrix portal must be initialized with bit_depth=2 (PWM depth)
+#   for 0x884400 to render as brown. bit_depth=1 renders it as pure red.
 #
 # Each sprite is 16 wide x 20 tall = 320 chars.
 # Rows 14-17: terracotta pot (shared).
