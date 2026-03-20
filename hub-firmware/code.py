@@ -12,6 +12,9 @@ from adafruit_matrixportal.network import Network
 from adafruit_io.adafruit_io import IO_HTTP
 from sprites import SPRITE_DATA
 
+# ---- CONFIG ----
+DISPLAY_MODE = "NORMAL"  # "NORMAL" or "SPRITE_DEMO"
+
 # ---- INIT ----
 matrix = Matrix(bit_depth=3)
 display = matrix.display
@@ -24,7 +27,7 @@ except:
     pass
 
 palette = displayio.Palette(6)
-for i, c in enumerate([0x000000, 0x00A000, 0xFFFF00, 0xFF0000, 0x884400, 0x206000]):
+for i, c in enumerate([0x000000, 0x00A000, 0xFFFF00, 0xFF0000, 0x884400, 0x103000]):
     palette[i] = c
 
 sheet = displayio.Bitmap(16 * len(SPRITE_DATA), 20, 6)
@@ -35,10 +38,10 @@ for s, d in enumerate(SPRITE_DATA):
 NUM_HEALTHY = len(SPRITE_DATA) - 2
 
 def sprite_index(moisture, variant):
-    if moisture is None: return variant % NUM_HEALTHY
+    if moisture is None: return (variant - 1) % NUM_HEALTHY
     if moisture < 20: return len(SPRITE_DATA) - 1
     if moisture < 50: return len(SPRITE_DATA) - 2
-    return variant % NUM_HEALTHY
+    return (variant - 1) % NUM_HEALTHY
 
 
 def make_plant(name, x, variant):
@@ -47,7 +50,7 @@ def make_plant(name, x, variant):
     tg = displayio.TileGrid(sheet, pixel_shader=palette, width=1, height=1, tile_width=16, tile_height=20)
     tg.x = 1
     tg.y = 6
-    tg[0] = variant % NUM_HEALTHY
+    tg[0] = (variant - 1) % NUM_HEALTHY
     g.append(tg)
 
     pct = label.Label(font, text="--%", color=0xAAAAAA)
@@ -116,6 +119,15 @@ last_update = 0.0
 UPDATE_INTERVAL = 600.0  # 10 min
 
 while True:
+    if DISPLAY_MODE == "SPRITE_DEMO":
+        for demo_idx in range(NUM_HEALTHY):
+            for i, w in enumerate(plant_widgets):
+                v_idx = (demo_idx + i) % NUM_HEALTHY
+                w["tg"][0] = v_idx
+                w["pct"].text = f"V{v_idx + 1}"
+            time.sleep(2)
+        continue
+
     now = time.monotonic()
     if now - last_update > UPDATE_INTERVAL or last_update == 0:
         for w in plant_widgets:
