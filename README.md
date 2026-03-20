@@ -153,6 +153,19 @@ WET_VAL = 1015  # Value when sensor is in a cup of water
 
 Adjust these numbers based on your specific soil type for accurate percentages.
 
+### 🛠 New Sensor Troubleshooting & Setup
+
+If a new sensor is not mounting or needs a fresh install:
+
+1.  **Power Isolation:** If the board won't mount, unplug the LiPo battery and STEMMA sensor. Connect *only* the QT Py board to rule out power draw/short issues.
+2.  **Enter Bootloader:** Double-tap the **Reset** button quickly. The NeoPixel should pulse green, and a drive named `QTPYS3BOOT` will appear.
+3.  **Flash Firmware:** 
+    - Use the **[Web Serial Installer](https://circuitpython.org/board/adafruit_qtpy_esp32s3_4mbflash_2mbpsram/)** for the easiest setup.
+    - If the web installer hangs, download the `.uf2` file manually and drag it onto the `QTPYS3BOOT` drive.
+4.  **Initial Files:** Once the drive reboots as `CIRCUITPY`, copy `code.py` and the `lib/` folder from `sensor-firmware/` in this repository.
+
+---
+
 ## 📚 Resources
 * **Font:** [Tom Thumb BDF](https://github.com/apparentlymart/led-matrix-fonts/blob/master/tom-thumb.bdf) (Right Click -> Save As)
 * **Library Bundle:** [Adafruit CircuitPython Bundle](https://circuitpython.org/libraries)
