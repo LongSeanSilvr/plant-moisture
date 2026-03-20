@@ -13,7 +13,7 @@ from adafruit_io.adafruit_io import IO_HTTP
 from sprites import SPRITE_DATA
 
 # ---- INIT ----
-matrix = Matrix(bit_depth=2)
+matrix = Matrix(bit_depth=3)
 display = matrix.display
 display.brightness = 0.5
 
@@ -23,11 +23,11 @@ try:
 except:
     pass
 
-palette = displayio.Palette(5)
-for i, c in enumerate([0x000000, 0x00FF00, 0xFFFF00, 0xFF0000, 0x884400]):
+palette = displayio.Palette(6)
+for i, c in enumerate([0x000000, 0x00A000, 0xFFFF00, 0xFF0000, 0x884400, 0x206000]):
     palette[i] = c
 
-sheet = displayio.Bitmap(16 * len(SPRITE_DATA), 20, 5)
+sheet = displayio.Bitmap(16 * len(SPRITE_DATA), 20, 6)
 for s, d in enumerate(SPRITE_DATA):
     for i in range(320):
         sheet[s * 16 + (i % 16), i // 16] = int(d[i])

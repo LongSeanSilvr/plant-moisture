@@ -2,14 +2,15 @@
 #
 # Verbatim from origin/main, reformatted as 20 explicit rows of 16 chars.
 #
-# Palette (5 colors, indices 0-4):
-#   - Note: indices 0-4 require value_count=5 (3 bits) in displayio.Bitmap.
+# Palette (6 colors, indices 0-5):
+#   - Note: indices 0-5 require value_count=6 (3 bits) in displayio.Bitmap.
 #
 #   0 = BLACK   (0x000000) — background
-#   1 = GREEN   (0x00FF00) — healthy leaves
+#   1 = FOREST GREEN (0x00A000) — healthy leaves
 #   2 = YELLOW  (0xFFFF00) — thirsty leaves
 #   3 = RED     (0xFF0000) — critical leaves
 #   4 = BROWN   (0x884400) — terracotta pot
+#   5 = MOSS GREEN   (0x206000) — shading
 #
 # Rendering Note:
 #   The Matrix portal must be initialized with bit_depth=2 (PWM depth)
