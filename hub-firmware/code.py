@@ -26,11 +26,11 @@ try:
 except:
     pass
 
-palette = displayio.Palette(6)
-for i, c in enumerate([0x000000, 0x00A000, 0xFFFF00, 0xFF0000, 0x884400, 0x103000]):
+palette = displayio.Palette(7)
+for i, c in enumerate([0x000000, 0x00A000, 0xFFFF00, 0xFF0000, 0x884400, 0x103000, 0x5D2200]):
     palette[i] = c
 
-sheet = displayio.Bitmap(16 * len(SPRITE_DATA), 20, 6)
+sheet = displayio.Bitmap(16 * len(SPRITE_DATA), 20, 7)
 for s, d in enumerate(SPRITE_DATA):
     for i in range(320):
         sheet[s * 16 + (i % 16), i // 16] = int(d[i])
