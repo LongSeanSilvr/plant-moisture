@@ -13,7 +13,7 @@ from adafruit_io.adafruit_io import IO_HTTP
 from sprites import SPRITE_DATA
 
 # ---- CONFIG ----
-DISPLAY_MODE = "NORMAL"  # "NORMAL" or "SPRITE_DEMO"
+DISPLAY_MODE = "SPRITE_DEMO"  # "NORMAL" or "SPRITE_DEMO"
 
 # ---- INIT ----
 matrix = Matrix(bit_depth=3)
@@ -26,11 +26,12 @@ try:
 except:
     pass
 
-palette = displayio.Palette(7)
-for i, c in enumerate([0x000000, 0x00A000, 0xFFFF00, 0xFF0000, 0x884400, 0x103000, 0x5D2200]):
+palette = displayio.Palette(8)
+for i, c in enumerate([0x000000, 0x00A000, 0xFFFF00, 0xFF0000, 0x884400, 0x103000, 0x5D2200, 0x306000]):
     palette[i] = c
 
-sheet = displayio.Bitmap(16 * len(SPRITE_DATA), 20, 7)
+
+sheet = displayio.Bitmap(16 * len(SPRITE_DATA), 20, 8)
 for s, d in enumerate(SPRITE_DATA):
     for i in range(320):
         sheet[s * 16 + (i % 16), i // 16] = int(d[i])
