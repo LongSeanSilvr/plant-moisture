@@ -5,6 +5,7 @@ import os
 import json
 import displayio
 import terminalio
+import microcontroller
 from adafruit_matrixportal.matrix import Matrix
 from adafruit_display_text import label
 from adafruit_bitmap_font import bitmap_font
@@ -13,7 +14,7 @@ from adafruit_io.adafruit_io import IO_HTTP
 from sprites import SPRITE_DATA
 
 # ---- CONFIG ----
-DISPLAY_MODE = "SPRITE_DEMO"  # "NORMAL" or "SPRITE_DEMO"
+DISPLAY_MODE = "NORMAL"  # "NORMAL" or "SPRITE_DEMO"
 
 # ---- INIT ----
 matrix = Matrix(bit_depth=3)
@@ -118,6 +119,7 @@ print(f"UI ready. {gc.mem_free()} bytes free.")
 # ---- MAIN LOOP ----
 last_update = 0.0
 UPDATE_INTERVAL = 600.0  # 10 min
+fetch_errors = 0
 
 while True:
     if DISPLAY_MODE == "SPRITE_DEMO":
@@ -131,6 +133,7 @@ while True:
 
     now = time.monotonic()
     if now - last_update > UPDATE_INTERVAL or last_update == 0:
+        success_count = 0
         for w in plant_widgets:
             p = w["data"]
             try:
@@ -141,8 +144,20 @@ while True:
                 w["pct"].text = f"{val}%"
                 w["tg"][0] = sprite_index(val, p["variant"])
                 print(f"  {p['name']}: {val}%")
+                success_count += 1
             except Exception as e:
                 print(f"Fetch error {p['name']}: {e}")
+        
+        if success_count == 0 and len(plant_widgets) > 0:
+            fetch_errors += 1
+            print(f"All fetches failed. Consecutive errors: {fetch_errors}")
+            if fetch_errors >= 3:
+                print("Too many consecutive errors, resetting device...")
+                time.sleep(1)
+                microcontroller.reset()
+        else:
+            fetch_errors = 0
+
         last_update = time.monotonic()
         gc.collect()
 
